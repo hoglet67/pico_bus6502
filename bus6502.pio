@@ -8,6 +8,8 @@
 
 ; The bus6502_control program samples the address/data/rnw signals twice per access
 ; and pushes the result into the FIFO
+;
+; (7)
 
 .program bus6502_control
 .wrap_target
@@ -24,10 +26,13 @@ idle:
 
 ; The bus6502_pindirs progam sets the direction of 4-bits of the data bus
 ; (two state machines are needed to cover the full 8-bit data bus)
+;
+; (11)
 
 .program bus6502_pindirs
 .wrap_target
 idle:
+    set x, 0
     wait 1 pin CS_PIN       ; wait for CS to go high
     wait 0 pin CS_PIN       ; wait for CS to go low
                             ; TODO deglitch CS and add a bit of delay
@@ -36,13 +41,17 @@ idle:
     jmp idle
 
 read_cycle:
-    set pindirs, 0b1111     ; start driving the databus
+    mov osr, ~x             ; osr = 0xffffffff
+    out pindirs, 8          ; start driving the databus
     wait 0 pin PHI2_PIN     ; wait for the end of the bus cycle
-    set pindirs, 0b0000     ; start driving the databus
+    mov osr, x              ; osr = 0x00000000
+    out pindirs, 8          ; start driving the databus
 .wrap                       ; and back to idle again
 
 ; The bus6502_pins programs selects the approriate 8-bits out of 32-bit x,
 ; and write this to the the data bus (specifically the output register)
+;
+; (8)
 
 .program bus6502_pins
 .wrap_target

@@ -22,7 +22,7 @@ static inline void bus6502_program_init(PIO pio, uint pin) {
    }
 
    // Set the default pindirs of all state machines to input
-   for (uint sm = 0; sm < NUM_PINS; sm++) {
+   for (uint sm = 0; sm < 3; sm++) {
       pio_sm_set_consecutive_pindirs(pio, sm, pin, NUM_PINS, false);
    }
 
@@ -33,30 +33,23 @@ static inline void bus6502_program_init(PIO pio, uint pin) {
    sm_config_set_in_shift(&c0, 0, 0, 0);    // shift left, no auto push
    pio_sm_init(pio, 0, offset_control, &c0);
 
-   // Configure SM1 (the PINDIRS state machine controlling the direction of D3:0)
+   // Configure SM1 (the PINDIRS state machine controlling the direction of D7:0)
    pio_sm_config c1 = bus6502_pindirs_program_get_default_config(offset_pindirs);
    sm_config_set_in_pins (&c1, pin       ); // mapping for IN and WAIT
    sm_config_set_jmp_pin (&c1, pin + 12  ); // mapping for JMP
-   sm_config_set_set_pins(&c1, pin,     4); // mapping for SET D3:0
+   sm_config_set_out_pins(&c1, pin,     8); // mapping for OUT (D7:0)
    pio_sm_init(pio, 1, offset_pindirs, &c1);
 
-   // Configure SM2 (the PINDIRS state machine controlling the direction of D7:4)
-   pio_sm_config c2 = bus6502_pindirs_program_get_default_config(offset_pindirs);
-   sm_config_set_in_pins (&c2, pin       ); // mapping for IN and WAIT
-   sm_config_set_jmp_pin (&c2, pin + 12  ); // mapping for JMP
-   sm_config_set_set_pins(&c2, pin + 4, 4); // mapping for SET D7:4
-   pio_sm_init(pio, 2, offset_pindirs, &c2);
-
-   // Configure SM3 (the PIN state machine controlling the data output to D7:0)
-   pio_sm_config c3 = bus6502_pins_program_get_default_config(offset_pins);
-   sm_config_set_in_pins (&c3, pin + 8   ); // mapping for IN and WAIT
-   sm_config_set_jmp_pin (&c3, pin + 12  ); // mapping for JMP (RnW)
-   sm_config_set_out_pins(&c3, pin,     8); // mapping for OUT (D7:0)
-   sm_config_set_in_shift(&c3, 0, 0, 0);    // shift left, no auto push
-   pio_sm_init(pio, 3, offset_pins, &c3);
+   // Configure SM2 (the PIN state machine controlling the data output to D7:0)
+   pio_sm_config c2 = bus6502_pins_program_get_default_config(offset_pins);
+   sm_config_set_in_pins (&c2, pin + 8   ); // mapping for IN and WAIT
+   sm_config_set_jmp_pin (&c2, pin + 12  ); // mapping for JMP (RnW)
+   sm_config_set_out_pins(&c2, pin,     8); // mapping for OUT (D7:0)
+   sm_config_set_in_shift(&c2, 0, 0, 0);    // shift left, no auto push
+   pio_sm_init(pio, 2, offset_pins, &c2);
 
    // Enable all the state machines
-   for (uint sm = 0; sm < NUM_PINS; sm++) {
+   for (uint sm = 0; sm < 3; sm++) {
       pio_sm_set_enabled(pio, sm, true);
    }
 }
@@ -82,7 +75,7 @@ int main() {
    // Set X to a value test value (this is used for the read data)
 
    uint test = 0x44332211;
-   set_x(pio, 3, test);
+   set_x(pio, 2, test);
 
    while (1) {
 
