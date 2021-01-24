@@ -9,7 +9,7 @@
 ; The bus6502_control program samples the address/data/rnw signals twice per access
 ; and pushes the result into the FIFO
 ;
-; (7)
+; (6)
 
 .program bus6502_control
 .wrap_target
@@ -21,7 +21,7 @@ idle:
     wait 1 pin PHI2_PIN     ; wait for PHI2 pin to go high
     wait 0 pin PHI2_PIN     ; wait for PHI2 pin to go low
     in pins, 16             ; sample the write data just after the falling edge
-    push
+                            ; auto-push now used
 .wrap                       ; and back to idle again
 
 ; The bus6502_pindirs progam sets the direction of 4-bits of the data bus

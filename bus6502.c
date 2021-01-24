@@ -30,7 +30,7 @@ static inline void bus6502_program_init(PIO pio, uint pin) {
    pio_sm_config c0 = bus6502_control_program_get_default_config(offset_control);
    sm_config_set_in_pins (&c0, pin       ); // mapping for IN and WAIT
    sm_config_set_jmp_pin (&c0, pin + 12  ); // mapping for JMP
-   sm_config_set_in_shift(&c0, 0, 0, 0);    // shift left, no auto push
+   sm_config_set_in_shift(&c0, false, true, 32); // shift left, auto push, threshhold 32
    pio_sm_init(pio, 0, offset_control, &c0);
 
    // Configure SM1 (the PINDIRS state machine controlling the direction of D7:0)
@@ -45,7 +45,7 @@ static inline void bus6502_program_init(PIO pio, uint pin) {
    sm_config_set_in_pins (&c2, pin + 8   ); // mapping for IN and WAIT
    sm_config_set_jmp_pin (&c2, pin + 12  ); // mapping for JMP (RnW)
    sm_config_set_out_pins(&c2, pin,     8); // mapping for OUT (D7:0)
-   sm_config_set_in_shift(&c2, 0, 0, 0);    // shift left, no auto push
+   sm_config_set_in_shift(&c2, false, false, 0); // shift left, no auto push
    pio_sm_init(pio, 2, offset_pins, &c2);
 
    // Enable all the state machines
