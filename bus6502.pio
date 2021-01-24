@@ -27,12 +27,11 @@ idle:
 ; The bus6502_pindirs progam sets the direction of 4-bits of the data bus
 ; (two state machines are needed to cover the full 8-bit data bus)
 ;
-; (11)
+; (10)
 
 .program bus6502_pindirs
 .wrap_target
 idle:
-    set x, 0
     wait 1 pin CS_PIN       ; wait for CS to go high
     wait 0 pin CS_PIN       ; wait for CS to go low
                             ; TODO deglitch CS and add a bit of delay
@@ -48,12 +47,14 @@ read_cycle:
     out pindirs, 8          ; start driving the databus
 .wrap                       ; and back to idle again
 
-; The bus6502_pins programs selects the approriate 8-bits out of 32-bit x,
+; The bus6502_pins0 programs selects the approriate 8-bits out of 32-bit x,
 ; and write this to the the data bus (specifically the output register)
 ;
-; (8)
+; this is used when a2 = 0
+;
+; (9)
 
-.program bus6502_pins
+.program bus6502_pins0
 .wrap_target
 idle:
     in null, 32             ; make sure the ISR is clear
@@ -61,6 +62,36 @@ idle:
     wait 0 pin (CS_PIN-8)   ; wait for CS to go low
                             ; TODO deglitch CS and add a bit of delay
     in pins, 2              ; sample the lower two address bits into isr
+
+    jmp pin, idle           ; if a2=1 then loop back
+
+    mov y, isr              ; copy 2-bit address into y
+    mov osr, x              ; copy 32-bit x (holding the read data) into the osr
+loop:
+    out pins, 8             ; copy the lower 8 bits of the osr to data bus
+    jmp y--, loop           ; decrement the address, and loop back
+.wrap                       ; and back to idle again
+
+; The bus6502_pins0 programs selects the approriate 8-bits out of 32-bit x,
+; and write this to the the data bus (specifically the output register)
+;
+; this is used when a2 = 1
+;
+; (10)
+
+.program bus6502_pins1
+.wrap_target
+idle:
+    in null, 32             ; make sure the ISR is clear
+    wait 1 pin (CS_PIN-8)   ; wait for CS to go high (-8 as the input mapping excludes D7:0)
+    wait 0 pin (CS_PIN-8)   ; wait for CS to go low
+                            ; TODO deglitch CS and add a bit of delay
+    in pins, 2              ; sample the lower two address bits into isr
+
+    jmp pin, skip           ; if a2=0 then loop back
+    jmp idle
+skip:
+
     mov y, isr              ; copy 2-bit address into y
     mov osr, x              ; copy 32-bit x (holding the read data) into the osr
 loop:
