@@ -35,14 +35,14 @@ static inline void bus6502_program_init(PIO p0, PIO p1, uint pin) {
    // Configure P0 / SM0 (the control state machine)
    pio_sm_config c0 = bus6502_control_program_get_default_config(offset_control);
    sm_config_set_in_pins (&c0, pin       ); // mapping for IN and WAIT
-   sm_config_set_jmp_pin (&c0, pin + 12  ); // mapping for JMP
-   sm_config_set_in_shift(&c0, false, true, 32); // shift left, auto push, threshhold 32
+   sm_config_set_jmp_pin (&c0, pin + 8   ); // mapping for JMP (A0)
+   sm_config_set_in_shift(&c0, false, true, 32); // shift left, auto push, threshold 32
    pio_sm_init(p0, 0, offset_control, &c0);
 
    // Configure P1 / SM0 (the PINDIRS state machine controlling the direction of D7:0)
    pio_sm_config c1 = bus6502_pindirs_program_get_default_config(offset_pindirs);
    sm_config_set_in_pins (&c1, pin       ); // mapping for IN and WAIT
-   sm_config_set_jmp_pin (&c1, pin + 12  ); // mapping for JMP
+   sm_config_set_jmp_pin (&c1, pin + 12  ); // mapping for JMP (RnW)
    sm_config_set_out_pins(&c1, pin,     8); // mapping for OUT (D7:0)
    pio_sm_init(p1, 0, offset_pindirs, &c1);
 

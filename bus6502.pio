@@ -9,7 +9,7 @@
 ; The bus6502_control program samples the address/data/rnw signals twice per access
 ; and pushes the result into the FIFO
 ;
-; (6)
+; (8)
 
 .program bus6502_control
 .wrap_target
@@ -17,6 +17,10 @@ idle:
     wait 1 pin CS_PIN       ; wait for CS to go high
     wait 0 pin CS_PIN       ; wait for CS to go low
                             ; TODO deglitch CS and add a bit of delay
+    jmp pin, notify         ; the EXECCTRL_JMP_PIN is A0 (ignore status reads/writes)
+    jmp idle
+
+notify:
     in pins, 16             ; take a sample when the control signals are stable
     wait 1 pin PHI2_PIN     ; wait for PHI2 pin to go high
     wait 0 pin PHI2_PIN     ; wait for PHI2 pin to go low
@@ -36,7 +40,7 @@ idle:
     wait 0 pin CS_PIN       ; wait for CS to go low
                             ; TODO deglitch CS and add a bit of delay
     wait 1 pin PHI2_PIN     ; wait for PHI2 pin to go high
-    jmp pin read_cycle      ; the  EXECCTRL_JMP_PIN is RNW
+    jmp pin read_cycle      ; the EXECCTRL_JMP_PIN is RNW
     jmp idle
 
 read_cycle:
