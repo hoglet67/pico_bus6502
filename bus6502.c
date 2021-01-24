@@ -7,8 +7,11 @@
 
 static inline void bus6502_program_init(PIO pio, uint pin) {
 
-   // Load the R/W program
-   uint offset_rw = pio_add_program(pio, &bus6502_rw_program);
+   // Load the Control program
+   uint offset_control = pio_add_program(pio, &bus6502_control_program);
+
+   // Load the PINS program
+   uint offset_pins = pio_add_program(pio, &bus6502_pins_program);
 
    // Load the PINDIRS program
    uint offset_pindirs = pio_add_program(pio, &bus6502_pindirs_program);
@@ -19,40 +22,46 @@ static inline void bus6502_program_init(PIO pio, uint pin) {
    }
 
    // Set the default pindirs of all state machines to input
-   pio_sm_set_consecutive_pindirs(pio, 0, pin, NUM_PINS, false);
-   pio_sm_set_consecutive_pindirs(pio, 1, pin, NUM_PINS, false);
-   pio_sm_set_consecutive_pindirs(pio, 2, pin, NUM_PINS, false);
+   for (uint sm = 0; sm < NUM_PINS; sm++) {
+      pio_sm_set_consecutive_pindirs(pio, sm, pin, NUM_PINS, false);
+   }
 
-   // Configure SM0 (the R/W state machine)
-   pio_sm_config c0 = bus6502_rw_program_get_default_config(offset_rw);
+   // Configure SM0 (the control state machine)
+   pio_sm_config c0 = bus6502_control_program_get_default_config(offset_control);
    sm_config_set_in_pins (&c0, pin       ); // mapping for IN and WAIT
-   sm_config_set_out_pins(&c0, pin,     8); // mapping for OUT (D7:0)
    sm_config_set_jmp_pin (&c0, pin + 12  ); // mapping for JMP
    sm_config_set_in_shift(&c0, 0, 0, 0);    // shift left, no auto push
-   pio_sm_init(pio, 0, offset_rw, &c0);
+   pio_sm_init(pio, 0, offset_control, &c0);
 
    // Configure SM1 (the PINDIRS state machine controlling the direction of D3:0)
    pio_sm_config c1 = bus6502_pindirs_program_get_default_config(offset_pindirs);
    sm_config_set_in_pins (&c1, pin       ); // mapping for IN and WAIT
-   sm_config_set_set_pins(&c1, pin,     4); // mapping for SET D3:0
    sm_config_set_jmp_pin (&c1, pin + 12  ); // mapping for JMP
+   sm_config_set_set_pins(&c1, pin,     4); // mapping for SET D3:0
    pio_sm_init(pio, 1, offset_pindirs, &c1);
 
    // Configure SM2 (the PINDIRS state machine controlling the direction of D7:4)
    pio_sm_config c2 = bus6502_pindirs_program_get_default_config(offset_pindirs);
    sm_config_set_in_pins (&c2, pin       ); // mapping for IN and WAIT
-   sm_config_set_set_pins(&c2, pin + 4, 4); // mapping for SET D7:4
    sm_config_set_jmp_pin (&c2, pin + 12  ); // mapping for JMP
+   sm_config_set_set_pins(&c2, pin + 4, 4); // mapping for SET D7:4
    pio_sm_init(pio, 2, offset_pindirs, &c2);
 
-   // Enable all the state machines
-   pio_sm_set_enabled(pio, 0, true);
-   pio_sm_set_enabled(pio, 1, true);
-   pio_sm_set_enabled(pio, 2, true);
+   // Configure SM3 (the PIN state machine controlling the data output to D7:0)
+   pio_sm_config c3 = bus6502_pins_program_get_default_config(offset_pins);
+   sm_config_set_in_pins (&c3, pin + 8   ); // mapping for IN and WAIT
+   sm_config_set_jmp_pin (&c3, pin + 12  ); // mapping for JMP (RnW)
+   sm_config_set_out_pins(&c3, pin,     8); // mapping for OUT (D7:0)
+   sm_config_set_in_shift(&c3, 0, 0, 0);    // shift left, no auto push
+   pio_sm_init(pio, 3, offset_pins, &c3);
 
+   // Enable all the state machines
+   for (uint sm = 0; sm < NUM_PINS; sm++) {
+      pio_sm_set_enabled(pio, sm, true);
+   }
 }
 
-void set_x(PIO pio, uint sm, uint x) {
+void set_x(PIO pio, uint sm, uint32_t x) {
    // Write to the TX FIFO
    pio_sm_put(pio, sm, x);
    // execute: pull
@@ -71,10 +80,13 @@ int main() {
    bus6502_program_init(pio, 0);
 
    // Set X to a value test value (this is used for the read data)
-   uint test = 0x55;
-   set_x(pio, 0, test);
+
+   uint test = 0x44332211;
+   set_x(pio, 3, test);
 
    while (1) {
+
+
       uint32_t value = pio_sm_get_blocking(pio, 0);
       printf("raw=%08x\n", value);
 
@@ -86,8 +98,8 @@ int main() {
       } else {
          printf("write: addr=%x data=%02x\n", addr, data);
          // Toggle X after each write
-         test ^= 0xff;
-         set_x(pio, 0, test);
+         //test ^= 0xffffffff;
+         //set_x(pio, 0, test);
       }
 
    }

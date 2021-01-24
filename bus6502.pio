@@ -1,50 +1,36 @@
+; Define the relative pin numbers
+
 .define DATA_PIN  0
 .define ADDR_PIN  8
 .define RNW_PIN  12
 .define CS_PIN   13
 .define PHI2_PIN 14
 
-.define N_SAMPLE  16
+; The bus6502_control program samples the address/data/rnw signals twice per access
+; and pushes the result into the FIFO
 
-.program bus6502_rw
+.program bus6502_control
 .wrap_target
 idle:
     wait 1 pin CS_PIN       ; wait for CS to go high
     wait 0 pin CS_PIN       ; wait for CS to go low
-                            ; TODO deglitch CS
-
-    in pins, N_SAMPLE       ; take a sample when the control signals are stable
-
+                            ; TODO deglitch CS and add a bit of delay
+    in pins, 16             ; take a sample when the control signals are stable
     wait 1 pin PHI2_PIN     ; wait for PHI2 pin to go high
-
-
-    jmp pin read_cycle      ; the  EXECCTRL_JMP_PIN is RNW
-
-write_cycle:
     wait 0 pin PHI2_PIN     ; wait for PHI2 pin to go low
-    in pins, N_SAMPLE       ; sample the write data just after the falling edge, and place in x
-    jmp push_request        ; push the request
-
-read_cycle:
-    mov pins, x             ; data bus output register = x (a loopback test)
-    wait 0 pin PHI2_PIN     ; wait for the end of the bus cycle
-
-    in x, N_SAMPLE          ; push null data
-
-push_request:
+    in pins, 16             ; sample the write data just after the falling edge
     push
-
 .wrap                       ; and back to idle again
 
-
-; The bus6502_pindirs progam control the direction of 4-bits of the data bus
+; The bus6502_pindirs progam sets the direction of 4-bits of the data bus
+; (two state machines are needed to cover the full 8-bit data bus)
 
 .program bus6502_pindirs
 .wrap_target
 idle:
     wait 1 pin CS_PIN       ; wait for CS to go high
     wait 0 pin CS_PIN       ; wait for CS to go low
-                            ; TODO deglitch
+                            ; TODO deglitch CS and add a bit of delay
     wait 1 pin PHI2_PIN     ; wait for PHI2 pin to go high
     jmp pin read_cycle      ; the  EXECCTRL_JMP_PIN is RNW
     jmp idle
@@ -53,4 +39,22 @@ read_cycle:
     set pindirs, 0b1111     ; start driving the databus
     wait 0 pin PHI2_PIN     ; wait for the end of the bus cycle
     set pindirs, 0b0000     ; start driving the databus
+.wrap                       ; and back to idle again
+
+; The bus6502_pins programs selects the approriate 8-bits out of 32-bit x,
+; and write this to the the data bus (specifically the output register)
+
+.program bus6502_pins
+.wrap_target
+idle:
+    in null, 32             ; make sure the ISR is clear
+    wait 1 pin (CS_PIN-8)   ; wait for CS to go high (-8 as the input mapping excludes D7:0)
+    wait 0 pin (CS_PIN-8)   ; wait for CS to go low
+                            ; TODO deglitch CS and add a bit of delay
+    in pins, 2              ; sample the lower two address bits into isr
+    mov y, isr              ; copy 2-bit address into y
+    mov osr, x              ; copy 32-bit x (holding the read data) into the osr
+loop:
+    out pins, 8             ; copy the lower 8 bits of the osr to data bus
+    jmp y--, loop           ; decrement the address, and loop back
 .wrap                       ; and back to idle again
