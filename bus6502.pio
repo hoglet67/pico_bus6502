@@ -1,0 +1,57 @@
+.define DATA_PIN  0
+.define ADDR_PIN  8
+.define RNW_PIN  12
+.define CS_PIN   13
+.define PHI2_PIN 14
+
+.define N_SAMPLE  16
+
+.program bus6502_rw
+.wrap_target
+idle:
+    wait 1 pin CS_PIN       ; wait for CS to go high
+    wait 0 pin CS_PIN       ; wait for CS to go low
+                            ; TODO deglitch CS
+
+    in pins, N_SAMPLE       ; take a sample when the control signals are stable
+
+    wait 1 pin PHI2_PIN     ; wait for PHI2 pin to go high
+
+
+    jmp pin read_cycle      ; the  EXECCTRL_JMP_PIN is RNW
+
+write_cycle:
+    wait 0 pin PHI2_PIN     ; wait for PHI2 pin to go low
+    mov x, pins             ; sample the write data just after the falling edge, and place in x
+    in x, N_SAMPLE          ; add the sample into the shift register
+    jmp push_request        ; push the request
+
+read_cycle:
+    mov pins, x             ; data bus output register = x (a loopback test)
+    wait 0 pin PHI2_PIN     ; wait for the end of the bus cycle
+
+    in x, N_SAMPLE          ; push null data
+
+push_request:
+    push
+
+.wrap                       ; and back to idle again
+
+
+; The bus6502_pindirs progam control the direction of 4-bits of the data bus
+
+.program bus6502_pindirs
+.wrap_target
+idle:
+    wait 1 pin CS_PIN       ; wait for CS to go high
+    wait 0 pin CS_PIN       ; wait for CS to go low
+                            ; TODO deglitch
+    wait 1 pin PHI2_PIN     ; wait for PHI2 pin to go high
+    jmp pin read_cycle      ; the  EXECCTRL_JMP_PIN is RNW
+    jmp idle
+
+read_cycle:
+    set pindirs, 0b1111     ; start driving the databus
+    wait 0 pin PHI2_PIN     ; wait for the end of the bus cycle
+    set pindirs, 0b0000     ; start driving the databus
+.wrap                       ; and back to idle again
