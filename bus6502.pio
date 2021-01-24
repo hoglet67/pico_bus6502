@@ -22,8 +22,7 @@ idle:
 
 write_cycle:
     wait 0 pin PHI2_PIN     ; wait for PHI2 pin to go low
-    mov x, pins             ; sample the write data just after the falling edge, and place in x
-    in x, N_SAMPLE          ; add the sample into the shift register
+    in pins, N_SAMPLE       ; sample the write data just after the falling edge, and place in x
     jmp push_request        ; push the request
 
 read_cycle:

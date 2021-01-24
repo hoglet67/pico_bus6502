@@ -52,6 +52,15 @@ static inline void bus6502_program_init(PIO pio, uint pin) {
 
 }
 
+void set_x(PIO pio, uint sm, uint x) {
+   // Write to the TX FIFO
+   pio_sm_put(pio, sm, x);
+   // execute: pull
+   pio_sm_exec(pio, sm, pio_encode_pull(false, false));
+   // execute: mov x, osr
+   pio_sm_exec(pio, sm, pio_encode_mov(pio_x, pio_osr));
+}
+
 int main() {
    stdio_init_all();
 
@@ -61,8 +70,9 @@ int main() {
 
    bus6502_program_init(pio, 0);
 
-   // Set X to a value test value
-   pio_sm_exec(pio, 0, 0xE000 + 0x20 + 0x15);
+   // Set X to a value test value (this is used for the read data)
+   uint test = 0x55;
+   set_x(pio, 0, test);
 
    while (1) {
       uint32_t value = pio_sm_get_blocking(pio, 0);
@@ -75,7 +85,11 @@ int main() {
          printf("read:  addr=%x data=%02x\n", addr, data);
       } else {
          printf("write: addr=%x data=%02x\n", addr, data);
+         // Toggle X after each write
+         test ^= 0xff;
+         set_x(pio, 0, test);
       }
+
    }
 
    return 0;
