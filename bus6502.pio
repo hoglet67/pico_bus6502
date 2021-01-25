@@ -2,7 +2,7 @@
 
 .define DATA_PIN  0
 .define ADDR_PIN  8
-.define RNW_PIN  12
+.define RNW_PIN  11
 .define CS_PIN   13
 .define PHI2_PIN 14
 

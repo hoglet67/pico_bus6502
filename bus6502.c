@@ -42,7 +42,7 @@ static inline void bus6502_program_init(PIO p0, PIO p1, uint pin) {
    // Configure P1 / SM0 (the PINDIRS state machine controlling the direction of D7:0)
    pio_sm_config c1 = bus6502_pindirs_program_get_default_config(offset_pindirs);
    sm_config_set_in_pins (&c1, pin       ); // mapping for IN and WAIT
-   sm_config_set_jmp_pin (&c1, pin + 12  ); // mapping for JMP (RnW)
+   sm_config_set_jmp_pin (&c1, pin + 11  ); // mapping for JMP (RnW)
    sm_config_set_out_pins(&c1, pin,     8); // mapping for OUT (D7:0)
    pio_sm_init(p1, 0, offset_pindirs, &c1);
 
@@ -97,8 +97,8 @@ int main() {
       printf("raw=%08x\n", value);
 
       uint data =  value        & 0xff;
-      uint addr = (value >> 24) & 0x0f;
-      uint rnw  = (value >> 28) & 0x01;
+      uint addr = (value >> 24) & 0x07;
+      uint rnw  = (value >> 27) & 0x01;
       if (rnw) {
          printf("read:  addr=%x data=%02x\n", addr, data);
       } else {
